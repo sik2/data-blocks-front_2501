@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import ReactLoading from 'react-loading'
+import { mockPosts, mockAuth } from '../../mocks/data'
 
 function Edit() {
     const { id } = useParams()
@@ -14,40 +14,36 @@ function Edit() {
     const [tags, setTags] = useState([])
 
     useEffect(() => {
-        const getPost = async () => {
-            try {
-                const docRef = doc(db, 'items', id)
-                const docSnap = await getDoc(docRef)
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data()
-                    setTitle(data.title || '')
-                    setContent(data.content || '')
-                    const existingTags = data.tags || []
-                    setTags(existingTags.map((tag) => tag.replace('#', '')))
-                } else {
-                    toast.error('게시글을 찾을 수 없습니다.')
-                    navigate('/post/list')
-                }
-            } catch (error) {
-                console.error('Error fetching post:', error)
-                toast.error('게시글 불러오기에 실패했습니다.')
-            } finally {
-                setLoading(false)
+        const timer = setTimeout(() => {
+            const post = mockPosts.find((post) => post.id === id)
+            if (!post) {
+                toast.error('게시글을 찾을 수 없습니다.')
+                navigate('/post/list')
+                return
             }
-        }
 
-        getPost()
+            // 현재 사용자가 작성자인지 확인
+            const currentUser = mockAuth.getCurrentUser()
+            if (currentUser?.id !== post.userId) {
+                toast.error('수정 권한이 없습니다.')
+                navigate('/post/list')
+                return
+            }
+
+            setTitle(post.title)
+            setContent(post.content)
+            setTags(post.tags || [])
+            setLoading(false)
+        }, 1000)
+
+        return () => clearTimeout(timer)
     }, [id, navigate])
 
     const handleAddTag = () => {
         const newTag = tagInput.trim()
         if (newTag) {
             if (tags.includes(newTag)) {
-                toast.warning('이미 존재하는 태그입니다.', {
-                    position: 'top-right',
-                    autoClose: 2000,
-                })
+                toast.warning('이미 존재하는 태그입니다.')
                 setTagInput('')
                 return
             }
@@ -69,10 +65,7 @@ function Edit() {
             const newTag = value.trim()
             if (newTag) {
                 if (tags.includes(newTag)) {
-                    toast.warning('이미 존재하는 태그입니다.', {
-                        position: 'top-right',
-                        autoClose: 2000,
-                    })
+                    toast.warning('이미 존재하는 태그입니다.')
                 } else {
                     setTags([...tags, newTag])
                 }
@@ -90,22 +83,25 @@ function Edit() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
-            setLoading(true)
-            const docRef = doc(db, 'items', id)
-            await updateDoc(docRef, {
+            const postIndex = mockPosts.findIndex((post) => post.id === id)
+            if (postIndex === -1) {
+                toast.error('게시글을 찾을 수 없습니다.')
+                return
+            }
+
+            // 게시글 업데이트
+            mockPosts[postIndex] = {
+                ...mockPosts[postIndex],
                 title,
                 content,
                 tags,
                 updatedAt: new Date().toISOString(),
-            })
+            }
 
             toast.success('게시글이 수정되었습니다.')
             navigate(`/post/${id}`)
         } catch (error) {
-            console.error('Error updating post:', error)
             toast.error('게시글 수정에 실패했습니다.')
-        } finally {
-            setLoading(false)
         }
     }
 
@@ -135,6 +131,7 @@ function Edit() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="제목을 입력하세요"
                         required
                     />
                 </div>
@@ -190,6 +187,7 @@ function Edit() {
                         onChange={(e) => setContent(e.target.value)}
                         rows={12}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="내용을 입력하세요"
                         required
                     />
                 </div>
@@ -197,13 +195,13 @@ function Edit() {
                 <div className="flex justify-end gap-4">
                     <button
                         type="button"
-                        onClick={() => navigate(`/post/${id}`)}
+                        onClick={() => navigate(-1)}
                         className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
                     >
                         취소
                     </button>
                     <button type="submit" className="px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">
-                        수정하기
+                        수정
                     </button>
                 </div>
             </form>
