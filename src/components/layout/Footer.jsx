@@ -5,7 +5,6 @@ function Footer() {
                 <div className="flex justify-between items-center">
                     <div>
                         <div className="flex items-center space-x-2 mb-4">
-                            <span className="bg-yellow-400 px-2 py-1 rounded text-sm text-gray-800">Button</span>
                             <h2 className="text-2xl font-bold">Tech Blocks</h2>
                         </div>
                     </div>
